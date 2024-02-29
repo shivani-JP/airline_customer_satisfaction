@@ -1,0 +1,1034 @@
+---
+title: "Coursework1"
+author: '36226843'
+date: "2023-02-22"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(plotrix)
+library(cluster)
+library(greybox)
+library(corrplot)
+library(caret)
+library(ggplot2)
+library(RColorBrewer)
+library(dplyr)
+library(visdat)
+library(naniar)
+library(webr)
+library(scales) 
+library(ggmosaic)
+library("Information")
+```
+
+Data exploration
+```{r}
+arlinedf <- read.csv("airlinesData38.csv",stringsAsFactors = TRUE)
+arlinedf 
+```
+```{r}
+print("Count of total missing values - ")
+sum(is.na(arlinedf))
+```
+```{r}
+gg_miss_var(arlinedf) + labs(y = "missing Values")
+```
+
+```{r}
+#dropping missing values 
+arlinedf <- na.omit(arlinedf)
+```
+
+
+```{r}
+df <- arlinedf
+```
+
+
+```{r}
+#converting to numeric values 
+df <- lapply(arlinedf, as.numeric)
+df <- data.frame(df)
+
+```
+
+
+```{r}
+str(df)
+```
+
+
+```{r}
+dim(df)
+```
+
+
+```{r}
+df_zeros <- df[rowSums(df == 0) > 0, ]
+
+
+```
+
+```{r}
+dim(df_zeros)
+
+```
+
+```{r}
+
+# Define age bins
+bins <- cut(df$Age, breaks = c(0, 7, 30, 46, 85,Inf), include.lowest = TRUE)
+
+df$Age_Group = bins
+# Get the number of columns in the data frame
+n_cols <- ncol(df)
+
+# Initialize an empty list to store the results
+output_list <- list()
+
+# Loop over each column and count the zeros for each age bin
+for (i in 1:n_cols) {
+  col_name <- names(df)[i]
+  output <- aggregate(df[, i], list(Age_Range = bins), function(x) sum(x == 0))
+  col_name_output <- paste0("Count_", col_name)
+  names(output)[2] <- col_name_output
+  output_list[[i]] <- output
+}
+
+# Merge the output from each column into a single data frame
+df_output <- output_list[[1]]
+for (i in 2:n_cols) {
+  df_output <- merge(df_output, output_list[[i]], by = "Age_Range")
+}
+
+```
+
+```{r}
+# Print the resulting data frame
+View(df_output)
+
+```
+
+
+```{r}
+dim(df_output)
+```
+
+
+
+```{r}
+df$Inflight.wifi.service <- factor(df$Inflight.wifi.service, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+
+df$Departure.Arrival.time.convenient <- factor(df$Departure.Arrival.time.convenient, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$Ease.of.Online.booking <- factor(df$Ease.of.Online.booking, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$Gate.location <- factor(df$Gate.location, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$Food.and.drink <- factor(df$Food.and.drink, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$Online.boarding <- factor(df$Online.boarding, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$Seat.comfort <- factor(df$Seat.comfort, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$Inflight.entertainment <- factor(df$Inflight.entertainment, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$On.board.service <- factor(df$On.board.service, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$Leg.room.service <- factor(df$Leg.room.service, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+df$Baggage.handling <- factor(df$Baggage.handling, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+
+df$Checkin.service <- factor(df$Checkin.service, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+
+df$Inflight.service <- factor(df$Inflight.service, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+
+df$Cleanliness <- factor(df$Cleanliness, levels = c(1,2,3,4,5), labels = c("Poor", "Fair", "Average", "Good", "Excellent"), ordered = TRUE)
+
+df$satisfaction <- factor(df$satisfaction, levels = c(1,2), labels = c("neutral or dissatisfied", "satisfied"), ordered = TRUE)
+df$Gender <- factor(df$Gender, levels = c(1,2), labels = c("Female", "Male"), ordered = TRUE)
+df$Customer.Type <- factor(df$Customer.Type, levels = c(1,2), labels = c("Disloyal Loyal", "Loyal Customer"), ordered = TRUE)
+df$Type.of.Travel <- factor(df$Type.of.Travel, levels = c(1,2), labels = c("Business Travel", "Personal Travel"), ordered = TRUE)
+df$Class <- factor(df$Class, levels = c(1,2,3), labels = c("Business", "Eco","Eco Plus"), ordered = TRUE)
+
+df <- na.omit(df)
+
+```
+
+
+```{r}
+df_chi <- df %>% select(-c(Departure.Delay.in.Minutes,Arrival.Delay.in.Minutes,Flight.Distance,Age_Group))
+```
+
+```{r}
+
+```
+
+```{r}
+library(tidyverse)
+library(lsr)
+
+# function to get chi square p value and Cramers V
+f = function(x,y) {
+    tbl = df_chi %>% select(x,y) %>% table()
+    chisq_pval = round(chisq.test(tbl,correct = FALSE)$p.value, 4)
+    cramV = round(cramersV(tbl), 4) 
+    data.frame(x, y, chisq_pval, cramV) }
+
+# create unique combinations of column names
+# sorting will help getting a better plot (upper triangular)
+df_comb = data.frame(t(combn(sort(names(df_chi)), 2)), stringsAsFactors = F)
+
+# apply function to each variable combination
+df_res = map2_df(df_comb$X1, df_comb$X2, f)
+
+# plot results
+df_res %>%
+  ggplot(aes(x,y,fill=cramV))+
+  geom_tile()+
+  geom_text(aes(x,y,label=cramV))+
+  scale_fill_gradient(low="blue", high="red")+
+  theme_classic() + theme(axis.text.x = element_text(angle =90, vjust =0.5, hjust = 1))
+```
+```{r, echo=FALSE}
+#Testing Satisfaction with respect to Online boarding
+
+#Testing Online Boarding with respect to Ease of Online Booking
+ggplot(data = df_chi) +
+geom_mosaic(aes(x = product(Online.boarding), fill = Ease.of.Online.booking))
+#Observing impact of online boarding on satisfaction
+df.s.ob = df %>%
+     group_by(satisfaction,Online.boarding) %>%
+     summarize(n = n(), .groups='drop')
+df.s.ob = df.s.ob %>%
+     mutate(percent = (n/sum(n))*100)
+
+PieDonut(df.s.ob,aes(pies=satisfaction,donuts=Online.boarding,count=n),
+         ratioByGroup=FALSE,,explode = 2)
+
+#Observing impact of online boarding on satisfaction
+df.s.eoob = df %>%
+     group_by(satisfaction,Ease.of.Online.booking) %>%
+     summarize(n = n(), .groups='drop')
+df.s.eoob = df.s.eoob %>%
+     mutate(percent = (n/sum(n))*100)
+
+PieDonut(df.s.eoob,aes(pies=satisfaction,donuts=Ease.of.Online.booking,count=n),
+         ratioByGroup=FALSE,,explode = 2)
+```
+
+```{r, echo=FALSE}
+#Testing Online Boarding with respect to Inflight wifi service
+ggplot(data = df_chi) +
+geom_mosaic(aes(x = product(Online.boarding), fill = Inflight.wifi.service))
+```
+
+
+```{r, echo=FALSE}
+#satisfaction with respect to wifi services
+
+df5 = df %>%
+  group_by(Age_Group, Inflight.wifi.service) %>%
+  summarize(n = n())
+df5 = df5 %>%
+  mutate(percent = (n/sum(n))*100)
+
+df55 = df %>%
+  group_by(satisfaction, Inflight.wifi.service) %>%
+  summarize(n = n())
+df55 = df55 %>%
+  mutate(percent = (n/sum(n))*100)
+# Plot pie chart
+ggplot(df5, aes(x = "", y = percent, fill = Inflight.wifi.service)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") +
+  facet_wrap(~Age_Group) +
+  theme_void() +
+  labs(title = "Inflight wifi service by Age Group", fill = "Inflight wifi service")+
+  geom_text(aes(label = paste0(round(percent), "%")), position = position_stack(vjust = 0.5))
+
+PieDonut(df55,aes(pies=satisfaction,donuts=Inflight.wifi.service,count=n),
+         ratioByGroup=FALSE,,explode = 2)
+
+ggplot(df55, aes(x=Inflight.wifi.service, y=percent, fill=satisfaction)) +
+  geom_bar(stat="identity") +
+  labs(title="Inflight wifi service By Satisfaction Level", x="Inflight wifi service", y="Percent") +
+  scale_fill_manual(values=c("plum", "lightblue"), labels=c("Neutral or Dissatisfied", "Satisfied")) +
+  geom_text(aes(label = paste0(round(percent), "%")), position = position_stack(vjust = 0.5))+
+  theme_minimal()
+```
+
+```{r, echo=FALSE}
+df7 = df %>%
+  group_by(Age_Group, Inflight.entertainment) %>%
+  summarize(n = n(), .groups='drop')
+df7 = df7 %>%
+  mutate(percent = (n/sum(n))*100)
+
+df77 = df %>%
+  group_by(satisfaction, Inflight.entertainment) %>%
+  summarize(n = n(), .groups='drop')
+df77 = df77 %>%
+  mutate(percent = (n/sum(n))*100)
+
+PieDonut(df77,aes(pies=satisfaction,donuts=Inflight.entertainment,count=n),
+         ratioByGroup=FALSE,,explode = 2)
+
+```
+
+```{r}
+#Testing Online Boarding with respect to Ease of Online Booking
+ggplot(data = df_chi) +
+geom_mosaic(aes(x = product(Inflight.entertainment), fill = Cleanliness)) +
+  theme_minimal()+theme(legend.position = "top")
+
+ggplot(data = df_chi) +
+geom_mosaic(aes(x = product(Inflight.entertainment), fill = Food.and.drink))+
+  theme_minimal()+theme(legend.position = "top")
+
+ggplot(data = df_chi) +
+geom_mosaic(aes(x = product(Inflight.entertainment), fill = Seat.comfort))+
+  theme_minimal()+theme(legend.position = "top")
+```
+```{r}
+
+dfobs = df %>%
+  group_by(satisfaction, Online.boarding) %>%
+  summarize(n = n())
+dfobs = dfobs %>%
+  mutate(percent = (n/sum(n))*100)
+
+ggplot(dfobs, aes(x=Online.boarding, y=percent, fill=satisfaction)) +
+  geom_bar(stat="identity") +
+  labs(title="Online boarding By Satisfaction Level", x="Online.boarding service", y="Percent") +
+  scale_fill_manual(values=c("plum", "lightblue"), labels=c("Neutral or Dissatisfied", "Satisfied")) +
+  geom_text(aes(label = paste0(round(percent), "%")), position = position_stack(vjust = 0.5))+
+  theme_minimal() + theme(legend.position = "top")
+```
+
+
+```{r}
+
+df_c = df %>%
+  group_by(satisfaction, Cleanliness) %>%
+  summarize(n = n())
+df_c = df_c %>%
+  mutate(percent = (n/sum(n))*100)
+
+df_c1 = df %>%
+  group_by(satisfaction, Food.and.drink) %>%
+  summarize(n = n())
+df_c1 = df_c1 %>%
+  mutate(percent = (n/sum(n))*100)
+
+df_c2 = df %>%
+  group_by(satisfaction, Seat.comfort) %>%
+  summarize(n = n())
+df_c2 = df_c2 %>%
+  mutate(percent = (n/sum(n))*100)
+
+PieDonut(df_c,aes(pies=satisfaction,donuts=Cleanliness,count=n),
+         ratioByGroup=FALSE,explode = 2)
+
+PieDonut(df_c1,aes(pies=satisfaction,donuts=Food.and.drink,count=n),
+         ratioByGroup=FALSE,explode = 2)
+
+PieDonut(df_c2,aes(pies=satisfaction,donuts=Seat.comfort,count=n),
+         ratioByGroup=FALSE,explode = 2)
+
+```
+
+```{r}
+# Plot pie chart
+ggplot(df7, aes(x = "", y = percent, fill = Inflight.entertainment)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") +
+  facet_wrap(~Age_Group) +
+  theme_void() +
+  labs(title = "Inflight entertainment by Age Group", fill = "Inflight entertainment")+
+  geom_text(aes(label = paste0(round(percent), "%")), position = position_stack(vjust = 0.5))
+```
+
+
+```{r}
+# str(df)
+#mosaicplot(df_chi$satisfaction~df_chi$Online.boarding)
+ggplot(data = df_chi) +
+  geom_mosaic(aes(x = satisfaction, fill = Online.boarding)) 
+  #geom_mosaic_text(aes(x = product(Class), fill = Survived))
+```
+
+
+```{r}
+
+df_b2 = df %>%
+  group_by(satisfaction, Baggage.handling) %>%
+  summarize(n = n())
+df_b2 = df_b2 %>%
+  mutate(percent = (n/sum(n))*100)
+
+df_b3 = df %>%
+  group_by(satisfaction, On.board.service) %>%
+  summarize(n = n())
+df_b3 = df_b3 %>%
+  mutate(percent = (n/sum(n))*100)
+
+df_b4 = df %>%
+  group_by(satisfaction, Inflight.service) %>%
+  summarize(n = n())
+df_b4 = df_b4 %>%
+  mutate(percent = (n/sum(n))*100)
+
+ggplot(df_b2, aes(x=Baggage.handling, y=percent, fill=satisfaction)) +
+  geom_bar(stat="identity") +
+  labs(title="Satisfaction By Baggage handling", x="Baggage handling", y="Percent") +
+  geom_text(aes(label = paste0(round(percent), "%")), position = position_stack(vjust = 0.5))+
+  theme_minimal()+theme(legend.position = "top")
+
+ggplot(df_b3, aes(x=On.board.service, y=percent, fill=satisfaction)) +
+  geom_bar(stat="identity") +
+  labs(title="Satisfaction By On board service", x="On board service", y="Percent") +
+  geom_text(aes(label = paste0(round(percent), "%")), position = position_stack(vjust = 0.5))+
+  theme_minimal()+theme(legend.position = "top")
+
+ggplot(df_b4, aes(x=Inflight.service, y=percent, fill=satisfaction)) +
+  geom_bar(stat="identity") +
+  labs(title="Satisfaction By Inflight service", x="Inflight service", y="Percent") +
+  geom_text(aes(label = paste0(round(percent), "%")), position = position_stack(vjust = 0.5))+
+  theme_minimal()+theme(legend.position = "top")
+```
+```{r}
+ggplot(df, aes(x = Class, fill = satisfaction , group = satisfaction)) +
+    geom_bar() +
+   geom_text(aes(label=scales::percent((..count..)/sum(after_stat(count)))), colour = "white",stat="count", vjust = -0.8, size=2.5)+
+    labs(title = "Customer Satisfaction by Class", x = "Satisfaction", y = "Count")  +
+  theme_minimal()+theme(legend.position = "top")
+
+#talk about 1st and 2nd class 
+ggplot(df, aes(x = Customer.Type , fill = Type.of.Travel  , group = Type.of.Travel)) +
+    geom_bar() +  geom_text(aes(label=scales::percent((..count..)/sum(after_stat(count)))), colour = "white",stat="count", vjust = -0.8, size=2.5)+ 
+    labs(title = "Customer Type of Travel by Customer Type", x = "Type of Travel", y = "Count") +
+  theme_minimal()+theme(legend.position = "top")
+
+
+ #speak about 1st 
+ggplot(df, aes(x = Type.of.Travel , fill = satisfaction , group = satisfaction)) +
+    geom_bar() + geom_text(aes(label=scales::percent((..count..)/sum(after_stat(count)))), colour = "white",stat="count", vjust = -0.8, size=2.5)+
+    labs(title = "Customer Satisfaction by Type of Travel", x = "Satisfaction", y = "Count") +
+  theme_minimal()+theme(legend.position = "top")
+```
+```{r}
+ggplot(data = df5.6,
+       aes(axis1 = Age_Group, axis2 = Inflight.wifi.service, axis3 = Type.of.Travel,
+           y = n)) +
+  scale_x_discrete(limits = c("Age Group", "Inflight wifi service", "Type of Travel"), expand = c(.2, .05)) +
+  xlab("Demographic") +
+  geom_alluvium(aes(fill = satisfaction)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  theme_minimal() +
+  ggtitle("Customer feedback based on age ")
+```
+
+
+```{r, echo=FALSE}
+dfsc= df %>%
+  group_by(satisfaction,Class, Customer.Type, Seat.comfort) %>%
+  summarize(n = n())
+dfsc = dfsc %>%
+  mutate(percent = (n/sum(n))*100)
+
+```
+```{r}
+ggplot(data = dfsc,
+       aes(axis1 = Class, axis2 = Customer.Type, axis3 = Seat.comfort,
+           y = n)) +
+  scale_x_discrete(limits = c("Class", "Customer.Type", "Seat.comfort"), expand = c(.2, .05)) +
+  geom_alluvium(aes(fill = satisfaction)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  theme_minimal()+theme(legend.position = "top")
+
+```
+
+```{r, echo=FALSE}
+dffd= df %>%
+  group_by(satisfaction,Class, Customer.Type, Cleanliness) %>%
+  summarize(n = n())
+dffd = dffd %>%
+  mutate(percent = (n/sum(n))*100)
+
+ggplot(data = dffd,
+       aes(axis1 = Class, axis2 = Customer.Type, axis3 = Cleanliness,
+           y = n)) +
+  scale_x_discrete(limits = c("Class", "Customer.Type", "Cleanliness"), expand = c(.2, .05)) +
+  geom_alluvium(aes(fill = satisfaction)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  theme_minimal() +theme(legend.position = "top")
+
+```
+```{r, echo=FALSE}
+dflr= df %>%
+  group_by(satisfaction,Class, Customer.Type, Leg.room.service) %>%
+  summarize(n = n())
+dflr = dflr %>%
+  mutate(percent = (n/sum(n))*100)
+
+ggplot(data = dflr,
+       aes(axis1 = Class, axis2 = Customer.Type, axis3 = Leg.room.service,
+           y = n)) +
+  scale_x_discrete(limits = c("Class", "Customer.Type", "Leg.room.service"), expand = c(.2, .05)) +
+  geom_alluvium(aes(fill = satisfaction)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  theme_minimal()+theme(legend.position = "top")
+
+```
+
+```{r}
+ggplot(df5.6, aes(x=Customer.Type, y=percent, fill=Class)) +
+  geom_bar(stat="identity") +
+  labs(title="Customer satisfaction By Class", x="satisfaction", y="Percent") +
+  #geom_text(aes(label = paste0(round(percent), "%")), position = position_stack(vjust = 0.5))+
+  theme_minimal()+theme(legend.position = "top")
+
+PieDonut(df5.6,aes(pies=Type.of.Travel,donuts=Class),
+         ratioByGroup=FALSE,explode = 2)
+
+ggplot(data = df5.6,
+       aes(axis1 = Age_Group, axis2 = Inflight.wifi.service, axis3 = Type.of.Travel,
+           y = n)) +
+  scale_x_discrete(limits = c("Age Group", "Inflight wifi service", "Type of Travel"), expand = c(.2, .05)) +
+  xlab("Demographic") +
+  geom_alluvium(aes(fill = satisfaction)) +
+  geom_stratum() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  theme_minimal() +
+  ggtitle("Customer feedback based on age ")
+
+```
+
+#MDS
+
+
+```{r}
+
+
+par(mfrow = c(3, 3))
+
+
+boxplot(df$Customer.Type, main = "Boxplot for Customer Type")
+boxplot(df$Flight.Distance, main = "Boxplot for Flight Distance")
+boxplot(df$Departure.Delay.in.Minutes, main = "Boxplot for Departure Delay in Minutes")
+boxplot(df$Arrival.Delay.in.Minutes, main = "Boxplot for Arrival Delay in Minutes")
+
+
+par(mfrow = c(1, 1))
+```
+
+
+```{r}
+summary(df)
+```
+
+```{r}
+library(vcd)
+tableplot(df[, 2:4]) 
+```
+
+```{r}
+# Load the glmnet package
+library(glmnet)
+
+
+# Prepare your data
+x <- model.matrix(satisfaction~., df)[, -1]
+y <- df$satisfaction
+
+#setting seed 
+set.seed(1)
+
+#creating test and train dataset
+random.id <- sample(1:nrow(x))
+train <- sample(random.id, nrow(x)*0.80) # 80% of the data is the training set
+test <- random.id[-train]
+y.test <- y[test]
+#x_ord <- model.matrix(~ y - 1) 
+#hyperparameter tuning 
+grid <- 10^seq(10,-2,length = 100 )
+```
+
+```{r}
+#setting alpha to 0.5 for net elastic regression
+lasso.fit <- glmnet(x[train,], y[train], alpha = 0.5,
+lambda = grid)
+```
+
+
+```{r}
+#perform the cross-validation to find λ that minimises MSE in the validation set
+foldid <- sample(1:10, size = length(train), replace = TRUE)
+
+```
+
+```{r}
+lasso.cv.out <- cv.glmnet(x[train,], y[train], alpha = 0.5,
+foldid = foldid, nfolds = 10)
+```
+
+
+```{r}
+lasso.bestlam <- lasso.cv.out$lambda.min
+print(lasso.bestlam)
+```
+
+```{r}
+selected_features <- predict(lasso.fit, type = "coefficients",
+s = lasso.bestlam)
+print(selected_features)
+```
+
+
+```{r}
+plot(selected_features)
+```
+
+```{r}
+round(cbind(selected_features),2)
+```
+
+
+#lm
+
+```{r}
+
+
+base_mod <- lm(satisfaction ~ 1 , df)  
+
+
+all_mod <- lm(satisfaction ~ . , df) 
+
+
+final_Mod <- step(base.mod, scope = list(lower = base.mod, upper = all.mod), direction = "both", trace = 0, steps = 1000)  
+
+
+selected_var <- names(unlist(final_Mod[[1]])) 
+selected_var <- selected_var[!selected_var %in% "(Intercept)"] # remove intercept
+
+# Show
+print(selected_var)
+```
+
+
+#iv
+
+```{r}
+#converting dependent variable to binary 
+df$satisfaction <- ifelse(df$satisfaction == 1, 0, 1)
+```
+
+
+```{r}
+IV <- create_infotables(data=df, y="satisfaction", bins = 5)
+```
+
+```{r}
+plot_infotables(IV,"Online.boarding")
+```
+
+MDS
+
+```{r}
+mds_df <- dplyr::select(df,Online.boarding,Inflight.wifi.service,Baggage.handling,
+                 On.board.service,Leg.room.service,Leg.room.service,
+                 Inflight.entertainment,Seat.comfort,Inflight.service,
+                 Ease.of.Online.booking,Age,Type.of.Travel,Flight.Distance)
+```
+
+```{r}
+sample_df <- mds_df[sample(nrow(mds_df), 3000), ]
+
+```
+
+```{r}
+# Write down the number of the original dimensions
+nDimensions <- ncol(sample_df)
+# Prepare the vector with future stress values
+airportstress <- vector("numeric",nDimensions)
+```
+
+```{r}
+dfDissimMatrix <- daisy(sample_df,"gower")
+```
+
+
+
+```{r}
+for(i in 1:nDimensions){
+# Do MDS
+airportMDSTest <- cmdscale(dfDissimMatrix,k=i)
+# Produce dissimilarities matrix for the new dimensions
+airportMDSDist <- daisy(airportMDSTest,"gower")
+# Calculate stress metrics
+airportstress[i] <- sqrt(sum((dfDissimMatrix -
+airportMDSDist)^2)/sum(dfDissimMatrix^2))
+}
+```
+
+```{r}
+plot(airportstress)
+```
+
+
+```{r}
+dfMDS <- cmdscale(dfDissimMatrix, k=4)
+colnames(dfMDS) <- c("D1","D2","D3","D4")
+```
+
+```{r}
+#for sample
+colors <- ifelse(dfMDS[,1] > 0, "red", "blue")
+
+plot(dfMDS[,1], dfMDS[,2], col = colors)
+
+```
+
+```{r}
+dfDissimMatrixfull <- daisy(df,"gower")
+```
+
+```{r}
+dfMDSfull <- cmdscale(dfDissimMatrixfull, k=4)
+colnames(dfMDSfull) <- c("D1","D2","D3","D4")
+```
+
+```{r}
+colors <- ifelse(dfMDSfull[,1] > 0, "red", "blue")
+
+
+plot(dfMDSfull[,1], dfMDSfull[,2], col = colors)
+
+```
+
+
+```{r}
+lm = lm(satisfaction~Gender, data = arlinedf)
+```
+
+```{r}
+anova(IV, final_Mod, test="Chisq")
+```
+
+#Personal details
+```{r}
+statisdf = df %>%
+  group_by(satisfaction) %>%
+  summarize(n = n(), .groups='drop')
+statisdf = statisdf %>%
+  mutate(percent = (n/sum(n))*100)
+
+# Create pie chart
+ggplot(statisdf, aes(x="", y=percent, fill=satisfaction)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar(theta = "y") +
+  labs(title = "Customer Satisfaction: Neutral or Dissatisfied vs Satisfied") +
+  scale_fill_manual(values = c("#0099F8", "#000000")) +
+  geom_text(aes(label=round(percent,2)), colour = "white", size = 4, position = position_stack(vjust = 0.5)) + theme_minimal()
+
+```
+
+```{r}
+#percentage graph 
+ggplot(df, aes(x = Gender,fill = satisfaction , group = satisfaction)) +
+  geom_bar(stat = "count") + 
+  geom_text(aes(label=scales::percent((..count..)/sum(after_stat(count)))), colour = "white",stat="count", vjust = -0.8, size=4)+
+  labs(
+    title = "Customer Satification by Gender 
+    Neutral or Dissatisfied vs Satisfied",
+    x = "Gender",
+    y = "Count"
+  )+
+  theme_minimal()+theme(legend.position = "top")
+```
+
+```{r}
+ggplot(df, aes(x = Age, fill = satisfaction , group = satisfaction )) +
+  geom_bar(stat = "count", position="dodge") + 
+  labs(
+    title = "Customer Satification by Age - Neutral or Dissatisfied 
+    vs Satisfied",
+    x = "Age",
+    y = "Count") +
+  facet_grid(.~satisfaction) +
+ theme(legend.position = "top")
+```
+
+
+```{r}
+ggplot(df, aes(x = Flight.Distance, fill = satisfaction))+
+  geom_histogram(binwidth = 100 , position = "dodge",alpha = 0.8 ) +
+  scale_fill_manual(values = c("lightblue","lightpink")) +
+  labs(x = "Flight Distance" , y = "Count" ,fill = "Satisfaction") +
+  ggtitle("Histogram of Flight Distance") +
+theme_minimal()+theme(legend.position = "top")
+```
+
+
+
+
+
+```{r}
+#using prop.table 
+x = barplot(prop.table(table(df$satisfaction, df$Ease.of.Online.booking)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Ease.of.Online.booking))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+```
+
+```{r}
+
+
+#Gate.location
+x = barplot(prop.table(table(df$satisfaction, df$Gate.location)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Gate.location))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+#Departure.Arrival.time.convenient
+x = barplot(prop.table(table(df$satisfaction, df$Departure.Arrival.time.convenient)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Departure.Arrival.time.convenient))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%'))
+
+#Online.boarding
+x = barplot(prop.table(table(df$satisfaction, df$Online.boarding)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Online.boarding))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%'))
+```
+```{r}
+names(df)
+```
+
+
+#on boarding 
+
+```{r}
+#Inflight.service
+x = barplot(prop.table(table(df$satisfaction, df$Inflight.service)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Inflight.service))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+#Food.and.drink
+x = barplot(prop.table(table(df$satisfaction, df$Food.and.drink)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Food.and.drink))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%'))
+
+#Seat.comfort
+x = barplot(prop.table(table(df$satisfaction, df$Seat.comfort)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Seat.comfort))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+#Inflight.entertainment
+x = barplot(prop.table(table(df$satisfaction, df$Inflight.entertainment)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Inflight.entertainment))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+
+#On.board.service
+x = barplot(prop.table(table(df$satisfaction, df$On.board.service)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$On.board.service))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+#Online.boarding
+x = barplot(prop.table(table(df$satisfaction, df$Online.boarding)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Online.boarding))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+#Leg.room.service
+x = barplot(prop.table(table(df$satisfaction, df$Leg.room.service)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Leg.room.service))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+#Baggage.handling
+x = barplot(prop.table(table(df$satisfaction, df$Baggage.handling)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Baggage.handling))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+
+#Checkin.service
+x = barplot(prop.table(table(df$satisfaction, df$Checkin.service)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Checkin.service))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%')) 
+
+
+#cleanliness
+x = barplot(prop.table(table(df$satisfaction, df$Cleanliness)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Cleanliness))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%'))
+
+
+#Inflight.wifi.service
+x = barplot(prop.table(table(df$satisfaction, df$Inflight.wifi.service)),
+            col = rep(c('lightpink', 'lightblue')),
+            legend = TRUE,
+            ylim = c(0, 0.4),
+            yaxt = 'n', 
+            ylab = 'Percent of Customers')
+
+yticks = seq(0, 0.4, by = 0.05)
+axis(2, at = yticks, lab = percent(yticks))
+
+y = prop.table(table(df$satisfaction, df$Inflight.wifi.service))
+text(x, y[1,]/2, labels = paste0(as.character(round(y[1,]*100)), '%'))
+text(x, y[1,] + y[2,]/2, labels = paste0(as.character(round(y[2,]*100)), '%'))
+```
+
+
+#flight distance seat comfort 
+```{r}
+ggplot(df, aes(x=satisfaction, y=Flight.Distance, fill=Seat.comfort)) +
+  geom_bar(position="dodge", stat="identity") +
+  labs(title="Customer satisfaction on Seat Comfort for long duration flights", x="satisfaction", y="Flight distance") +
+  theme_minimal()+theme(legend.position = "top")
+```
+
