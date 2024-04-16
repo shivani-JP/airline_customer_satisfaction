@@ -22,11 +22,19 @@ This project focuses on understanding how the airline caters to both business an
 
 <img width="679" alt="Screenshot 2024-04-16 at 6 20 57 pm" src="https://github.com/shivani-JP/airline_customer_satisfaction/assets/85876559/5d23c468-8055-4790-9f80-7f793ff92aae">
 
-Cleanliness, Food and drink and Seat comfort had a high correlation with inflight entertainment and hence they were further investigated.
+
 <img width="650" alt="Screenshot 2024-04-16 at 6 21 09 pm" src="https://github.com/shivani-JP/airline_customer_satisfaction/assets/85876559/891df887-76a2-4b00-8c12-2d21e3f71d37">
 
-Customer satisfaction of Baggage handling, Onboard service and Inflight service
+
+<p align="center">
+<u>Cleanliness, Food and drink and Seat comfort had a high correlation with inflight entertainment and hence they were further investigated.</u>
+</p>
 <img width="762" alt="Screenshot 2024-04-16 at 6 21 26 pm" src="https://github.com/shivani-JP/airline_customer_satisfaction/assets/85876559/745271f7-b908-4d53-89fe-bcfc723c11e9">
+
+<p align="center">
+<u>Customer satisfaction of Baggage handling, Onboard service and Inflight service</u>
+</p>
+  
 
 <img width="810" alt="Screenshot 2024-04-16 at 6 21 34 pm" src="https://github.com/shivani-JP/airline_customer_satisfaction/assets/85876559/be361072-81e1-4edc-bb27-b0a65bb535de">
 
